@@ -8,6 +8,5 @@
     "rootDir": "src",
     "sourceMap": true
   },
-  "include": ["src"],
-  "references": [{ "path": "../language" }]
+  "include": ["src"]
 }
