@@ -1,0 +1,42 @@
+{
+  "name": "grover-language",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Un mediu interactiv pentru pseudocodul folosit la Bacalaureatul romanesc.",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w @grover/language && npm run build -w @grover/runtime && npm run build -w @grover/web",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test:coverage && npm run build",
+    "dev": "npm run dev -w @grover/web",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.2",
+    "@testing-library/user-event": "14.6.5",
+    "@types/node": "26.2.0",
+    "@vitest/coverage-v8": "4.1.11",
+    "eslint": "10.8.1",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-react-refresh": "0.5.4",
+    "jsdom": "30.0.1",
+    "prettier": "3.9.6",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.67.0",
+    "vitest": "4.1.11"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "name": "@grover/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@codemirror/commands": "6.11.0",
+    "@codemirror/language": "6.12.4",
+    "@codemirror/lint": "6.9.7",
+    "@codemirror/state": "6.7.1",
+    "@codemirror/view": "6.43.9",
+    "@fontsource-variable/fraunces": "5.3.0",
+    "@fontsource-variable/public-sans": "5.3.0",
+    "@fontsource/ibm-plex-mono": "5.3.0",
+    "@grover/language": "0.1.0",
+    "@grover/runtime": "0.1.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "@vitejs/plugin-react": "6.0.5",
+    "vite": "8.2.1"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.app.json --noEmit && vite build",
+    "dev": "vite",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit"
+  }
+}
