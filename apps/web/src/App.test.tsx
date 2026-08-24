@@ -1,8 +1,11 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { App } from './App';
+import { installMatchMedia } from './test-media-query';
+
+afterEach(() => vi.unstubAllGlobals());
 
 describe('App', () => {
   it('navigates between Code and the Romanian language reference', async () => {
@@ -10,6 +13,11 @@ describe('App', () => {
     render(<App />);
 
     expect(screen.getByText('Grover')).toBeInTheDocument();
+    expect(screen.queryByText(/interpretor pentru pseudocod/u)).not.toBeInTheDocument();
+    expect(screen.queryByText('Mod de executie')).not.toBeInTheDocument();
+    expect(screen.queryByText('Debugger semantic')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Versiunea dialectului')).not.toBeInTheDocument();
+    expect(screen.queryByText('BAC-RO 1')).not.toBeInTheDocument();
     expect(screen.queryByText('ready')).not.toBeInTheDocument();
     expect(screen.queryByText('Pas 0')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Input' })).toBeInTheDocument();
@@ -18,10 +26,19 @@ describe('App', () => {
       'Separa valorile cu Enter, spatiu sau virgula',
     );
     expect(screen.getByRole('heading', { name: 'Program' })).toBeInTheDocument();
+    const programsToggle = screen.getByRole('button', { name: 'Programe sablon' });
+    await user.click(programsToggle);
+    expect(programsToggle).toHaveAttribute('aria-expanded', 'true');
+    await user.keyboard('{Escape}');
+    expect(programsToggle).toHaveAttribute('aria-expanded', 'false');
+    expect(programsToggle).toHaveFocus();
+
     await user.click(screen.getByRole('button', { name: 'Documentatie' }));
+    expect(new URLSearchParams(window.location.search).get('view')).toBe('docs');
     const docsTitle = await screen.findByRole('heading', { level: 1, name: 'Pseudocod BAC-RO' });
     expect(docsTitle).toHaveFocus();
     await user.click(screen.getByRole('button', { name: 'Code' }));
+    expect(new URLSearchParams(window.location.search).has('view')).toBe(false);
     const programTitle = screen.getByRole('heading', { name: 'Program' });
     await waitFor(() => expect(programTitle).toHaveFocus());
   });
@@ -67,11 +84,30 @@ describe('App', () => {
     const user = userEvent.setup();
     render(<App />);
     await screen.findByLabelText('Editor de pseudocod');
-    const selector = screen.getByLabelText('Programe sablon');
+    const template = screen.getByRole('button', { name: 'Incarca Suma 1..n' });
 
-    await user.selectOptions(selector, 'suma');
+    await user.click(template);
 
-    expect(selector).toHaveValue('suma');
+    expect(template).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('unlocks the workspace when a mobile drawer crosses into desktop layout', async () => {
+    const media = installMatchMedia({ '(max-width: 799px)': true });
+    const user = userEvent.setup();
+    const { container } = render(<App />);
+    const toggle = screen.getByRole('button', { name: 'Programe sablon' });
+
+    await user.click(toggle);
+    const workspace = container.querySelector('.workspace-main');
+    const activeProgram = screen.getByRole('button', { name: 'Incarca Cifre pare' });
+    activeProgram.focus();
+    expect(workspace).toHaveAttribute('inert');
+
+    act(() => media('(max-width: 799px)').setMatches(false));
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(workspace).not.toHaveAttribute('inert');
+    expect(activeProgram).toHaveFocus();
   });
 
   it('appends missing input without discarding debugger progress', async () => {

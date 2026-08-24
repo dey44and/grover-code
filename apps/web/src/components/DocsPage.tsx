@@ -60,7 +60,7 @@ const sectionGroups = [
     ],
   },
   {
-    label: 'Contract',
+    label: 'Extra',
     sections: [
       ['compatibilitate', 'Compatibilitate BAC'],
       ['surse', 'Surse si versiune'],
@@ -69,34 +69,99 @@ const sectionGroups = [
   },
 ] as const;
 
+type PageSection = readonly [id: string, label: string];
+
+const pageSections: readonly PageSection[] = sectionGroups.flatMap<PageSection>(
+  (group) => group.sections,
+);
+
+const sectionFromLocation = (): string | undefined => {
+  let id: string;
+  try {
+    id = decodeURIComponent(window.location.hash.slice(1));
+  } catch {
+    return undefined;
+  }
+  return pageSections.some(([sectionId]) => sectionId === id) ? id : undefined;
+};
+
+const focusSection = (id: string): void => {
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
+      const target = document.getElementById(id);
+      const heading = target?.matches('h1, h2') === true ? target : target?.querySelector('h1, h2');
+      target?.scrollIntoView?.({ behavior: 'auto', block: 'start' });
+      if (heading instanceof HTMLElement) {
+        heading.tabIndex = -1;
+        heading.focus({ preventScroll: true });
+      }
+    });
+  });
+};
+
 export function DocsPage() {
   const titleRef = useRef<HTMLHeadingElement>(null);
+  const navigationToggleRef = useRef<HTMLButtonElement>(null);
   const [navigationOpen, setNavigationOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState(() => sectionFromLocation() ?? 'despre');
 
   useEffect(() => {
-    titleRef.current?.focus();
+    const initialSection = sectionFromLocation();
+    if (initialSection === undefined) titleRef.current?.focus();
+    else focusSection(initialSection);
+  }, []);
+
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return;
+    const sections = pageSections
+      .map(([id]) => document.getElementById(id))
+      .filter((section): section is HTMLElement => section !== null);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((left, right) => left.boundingClientRect.top - right.boundingClientRect.top)[0];
+        if (visible?.target instanceof HTMLElement) setActiveSection(visible.target.id);
+      },
+      { rootMargin: '-18% 0px -68%', threshold: 0 },
+    );
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!navigationOpen) return;
+    const closeOnEscape = (event: globalThis.KeyboardEvent): void => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      setNavigationOpen(false);
+      window.requestAnimationFrame(() => navigationToggleRef.current?.focus());
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [navigationOpen]);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return;
+    const mobileLayout = window.matchMedia('(max-width: 799px)');
+    const closeNavigationWhenLeavingMobile = (event: MediaQueryListEvent): void => {
+      if (!event.matches) setNavigationOpen(false);
+    };
+    mobileLayout.addEventListener('change', closeNavigationWhenLeavingMobile);
+    return () => mobileLayout.removeEventListener('change', closeNavigationWhenLeavingMobile);
   }, []);
 
   const closeNavigationAndFocus = (id: string): void => {
+    setActiveSection(id);
     setNavigationOpen(false);
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        const target = document.getElementById(id);
-        const heading =
-          target?.matches('h1, h2') === true ? target : target?.querySelector('h1, h2');
-        target?.scrollIntoView?.({ behavior: 'auto', block: 'start' });
-        if (heading instanceof HTMLElement) {
-          heading.tabIndex = -1;
-          heading.focus({ preventScroll: true });
-        }
-      });
-    });
+    focusSection(id);
   };
 
   return (
     <main className="docs-layout">
       <aside className="docs-nav" aria-label="Cuprins documentatie">
         <button
+          ref={navigationToggleRef}
           type="button"
           className="docs-nav__toggle"
           aria-controls="docs-navigation"
@@ -122,7 +187,12 @@ export function DocsPage() {
               <div className="docs-nav__group" key={group.label}>
                 <span className="docs-nav__group-label">{group.label}</span>
                 {group.sections.map(([id, label]) => (
-                  <a key={id} href={`#${id}`} onClick={() => closeNavigationAndFocus(id)}>
+                  <a
+                    key={id}
+                    href={`#${id}`}
+                    aria-current={activeSection === id ? 'location' : undefined}
+                    onClick={() => closeNavigationAndFocus(id)}
+                  >
                     {label}
                   </a>
                 ))}
@@ -132,14 +202,15 @@ export function DocsPage() {
         </div>
       </aside>
 
-      <article className="docs-content">
-        <header className="docs-hero" id="despre">
-          <div className="docs-breadcrumb">
-            Documentatie <span aria-hidden="true">/</span> BAC-RO 1
-          </div>
+      <article className="docs-content" inert={navigationOpen ? true : undefined}>
+        <header className="docs-hero">
           <h1 ref={titleRef} id="docs-title" tabIndex={-1}>
             Pseudocod BAC-RO
           </h1>
+        </header>
+
+        <section id="despre" className="docs-overview">
+          <h2>Despre BAC-RO</h2>
           <p className="docs-lead">
             BAC-RO este un dialect, construit pentru conventiile de pseudocod folosite la
             bacalaureatul din Romania. Pastreaza notatia din subiecte si defineste detalii de
@@ -159,13 +230,12 @@ export function DocsPage() {
               <dd>ASCII</dd>
             </div>
           </dl>
-        </header>
-
-        <Callout title="Conventie importanta">
-          Cuvintele cheie sunt afisate fara diacritice. La copy&paste sunt acceptate si forme precum{' '}
-          <code>citește</code>, <code>dacă</code> sau <code>până când</code>. Formatorul produce
-          intotdeauna forma care contine doar caractere ASCII.
-        </Callout>
+          <Callout title="Conventie importanta">
+            Cuvintele cheie sunt afisate fara diacritice. La copy&paste sunt acceptate si forme
+            precum <code>citește</code>, <code>dacă</code> sau <code>până când</code>. Formatorul
+            produce intotdeauna forma care contine doar caractere ASCII.
+          </Callout>
+        </section>
 
         <section id="primul-program">
           <h2>Primul program</h2>

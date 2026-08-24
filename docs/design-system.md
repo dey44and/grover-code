@@ -2,129 +2,126 @@
 
 ## Intent
 
-Grover uses the **Data Atelier** visual system: an academic workbench that combines the precision
-of a technical instrument with the calm of a printed study manual. The pale lilac canvas separates
-the product from generic gray dashboards, while the connected editor, inspector, output, and trace
-continue to read as one debugger.
+Grover uses one dark technical shell for both the debugger and the language manual. The interface
+is flat, dense, and predictable: navigation occupies the left rail, the primary task occupies the
+center, and contextual state occupies the right. One-pixel dividers establish hierarchy; large
+cards, decorative shadows, gradients, and display-serif typography are deliberately absent.
 
-The identity remains derived from the official BAC rail and filled terminator. In the application
-header the rail is rotated a quarter turn counter-clockwise, uses the primary violet, and ends in a
-small lilac square. These shapes are product signatures, not generic decoration, and must not
-replace the exact black/dark BAC notation inside the exam preview.
+The BAC rail and filled terminator remain Grover's product mark. In the application header the
+rail is rotated a quarter turn counter-clockwise and uses the documentation accent. Inside Format
+BAC, the same geometry is rendered as functional exam notation rather than decoration.
 
-## Reference synthesis
+## Reference and adaptation
 
-The implementation adapts interaction and composition patterns, not any product's identity,
-source, assets, CSS, copy, or exact proportions.
+The primary visual reference is the [Programming Languages Evolution
+wiki](https://wiki.imindlabs.com.au/cs/lang/pl/5_lex_and_yacc/1_basics/), which is built with
+[Astro Starlight](https://github.com/withastro/starlight). Grover recreates its dark palette,
+system typography, navigation proportions, reading measure, active-link treatment, and responsive
+information architecture with Grover-owned React markup and CSS. It does not reuse the reference
+logo, course content, media, generated class names, or hosted assets.
 
-The primary visual reference is [Boobook on
-Awwwards](https://www.awwwards.com/sites/boobook), a data-strategy consultancy presented through
-a clean, editorial interface. Its deep plum (`#190C39`) and lilac (`#BA9AFD`) relationship informs
-Data Atelier's approachable technical character, and its display/body typography contrast informs
-the separation between study-manual headings and application controls. Grover translates that
-direction into its own accessible palette, compact debugger geometry, and BAC-specific identity;
-it does not reproduce Boobook's layouts or assets.
+The reference is useful because its visual grammar works equally well for long-form technical
+material and an IDE-like tool. Grover maps that grammar to its own concepts:
 
-The following products are secondary interaction and information-architecture references:
-
-- [Python Tutor](https://pythontutor.com/visualize.html): explicit forward/back execution and
-  source next to runtime state.
-- [Thonny](https://thonny.org/): a deliberately small debugger surface, a stable Variables table,
-  and a visible current expression.
-- [Visual Studio Code debugger](https://code.visualstudio.com/docs/editor/debugging): related
-  execution actions in one toolbar and state inspection beside the source.
-- [MDN writing guidance](https://developer.mozilla.org/en-US/docs/MDN/Writing_guidelines):
-  predictable reference anatomy, concise examples, and semantic document structure.
-- [Diataxis](https://diataxis.fr/start-here/): navigation grouped by learning intent rather than a
-  flat list of equally weighted pages.
-- [WCAG 2.2 target size](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html) and
-  [focus appearance](https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance.html): minimum
-  interactive geometry and focus that remains visible against light and dark regions.
-
-The resulting layout, BAC identity, Romanian labels, component geometry, and responsive behavior
-are original to Grover.
+- the documentation tree and example programs share the 300-pixel left rail;
+- the article and source editor are the primary center surface;
+- the page outline and runtime inspector are contextual right rails;
+- the debugger toolbar uses the same compact control geometry as the reference search controls;
+- source, BAC projection, input, variables, output, and trace remain connected by neutral rules.
 
 ## Foundations
 
 ### Color
 
-| Role            | Value     | Use                                                     |
-| --------------- | --------- | ------------------------------------------------------- |
-| Canvas          | `#F1EFF7` | Application background and browser theme color          |
-| Surface         | `#FCFBFF` | Workbench, panels, documentation paper                  |
-| Ink             | `#21143A` | Primary text and the dark companion to focus indicators |
-| Rule            | `#D6D0E0` | Decorative divisions and table rules                    |
-| Strong boundary | `#82778F` | Form controls and interactive boundaries                |
-| Primary         | `#5C3FA3` | Actions, links, active navigation, runtime rail         |
-| Lilac           | `#BFA9FF` | Decorative markers and dark-editor syntax only          |
-| Active          | `#FFE8A3` | Current instruction and changed values                  |
-| Code            | `#211A2C` | Source editor, output, and code specimens               |
+The application uses the exact dark blue-gray family observed in the reference.
 
-Muted text is `#625873` on light surfaces. Success (`#276447`), warning (`#76520A`), and danger
-(`#9A3248`) are independent semantic roles. Color is never their only signal.
+| Role                  | Value     | Use                                         |
+| --------------------- | --------- | ------------------------------------------- |
+| Content background    | `#17181C` | Article, runtime panels, input, trace       |
+| Navigation background | `#24272F` | Header, left rails, panel headers           |
+| Strong text           | `#FFFFFF` | Headings and primary panel labels           |
+| Body text             | `#C0C2C7` | Paragraphs, controls, runtime values        |
+| Muted text            | `#888B96` | Metadata, inactive links, empty states      |
+| Boundary              | `#353841` | Dividers, fields, tables, code blocks       |
+| Strong boundary       | `#545861` | Interactive control outlines                |
+| Accent                | `#006CBA` | Strong actions and functional drop targets  |
+| Accent high           | `#AECCEC` | Brand, links, selected navigation           |
+| Accent low            | `#0C253D` | Selected-item ink and changed runtime state |
 
-Rule and lilac are decorative colors, not default text colors. Primary text must not be placed on
-lilac; use Ink instead. The dark code surface uses a separately tested syntax palette: lilac
-keywords, `#ADA6B5` comments, `#F5A78E` numbers, Rule operators, and `#E6C76A` strings.
+Semantic warning and error colors have independent dark surfaces and visible labels. Runtime state
+never relies on hue alone.
+
+The editor follows the reference code palette: `#D6DEEB` default text, `#C792EA` keywords,
+`#ECC48D` strings, `#F78C6C` numbers, `#7FDBCA` operators, and `#919F9F` comments. The editor and
+output use `#23262F`; the gutter is slightly darker so line numbers remain distinct.
 
 ### Typography
 
-- **Public Sans** is used for navigation, controls, panel labels, tables, and long-form body text.
-- **Fraunces 600** is reserved for page and documentation headings. It is not used in buttons,
-  runtime panels, or branding.
-- **IBM Plex Mono** is used for source, runtime values, input/output, trace metadata, and exact
-  language tokens. Code ligatures are disabled so operators retain their written form.
+- Documentation, controls, tables, and headings use the native system sans stack.
+- The Grover wordmark uses **Exo Variable 600**, bundled by Fontsource as a same-origin asset.
+- Source, runtime values, input/output, and trace metadata use the native system monospace stack.
+- Code ligatures are disabled so operators preserve their written form.
 
-The fonts are bundled through Fontsource and emitted by Vite as same-origin, hashed assets. Grover
-does not depend on a runtime font CDN. The two variable families are loaded once; IBM Plex Mono is
-limited to the required normal weights and the comment italic.
+Body text is 16 pixels with a 1.75 line-height. Desktop documentation headings use 42 pixels for
+`h1` and 35 pixels for `h2`; mobile headings use 35 and 29 pixels. Headings use weight 600 and the
+same sans family as the body.
 
-### Surfaces and geometry
+### Geometry
 
-- The application canvas is pale lilac; major reading and working areas use the off-white Surface.
-- The desktop workbench remains one connected instrument with a neutral one-pixel outline, a
-  12-pixel outer radius, and a restrained plum-tinted shadow.
-- Interior divisions use one-pixel rules. Form controls use the stronger boundary token.
-- Controls use a seven- or eight-pixel radius. The documentation paper uses a 16-pixel radius;
-  code specimens use ten pixels.
-- Shadows establish the two major layers only: workbench/document paper over the canvas. They are
-  not applied independently to every runtime panel.
+| Element                         | Dimension |
+| ------------------------------- | --------- |
+| Desktop application header      | 64 px     |
+| Mobile application header       | 56 px     |
+| Desktop left rail               | 300 px    |
+| Article text measure            | 720 px    |
+| Collapsed mobile/tablet TOC row | 48 px     |
+| Tablet breakpoint               | 800 px    |
+| Wide breakpoint                 | 1152 px   |
+
+The documentation right rail grows from the remaining viewport width so the 720-pixel article is
+positioned exactly as it is in the reference shell. Major surfaces have no outer radius or shadow.
+Selected navigation and bounded code/callout surfaces use restrained four- to eight-pixel radii.
 
 ## Workspace hierarchy
 
 ```text
 application header
-  workspace context + example selector
-  connected workbench
-    debugger toolbar
-    source / BAC projection | input / variables
-    output                  | execution trace
+  program rail | debugger workspace
+                 debugger toolbar
+                 source / BAC projection | input / variables
+                 output                  | execution trace
 ```
 
-The source remains the largest region. Runtime state is adjacent rather than overlaid. Output and
-trace stay visible in a lower dock. Changing between Source and Format BAC never unmounts the
-editor, so selection and undo history are preserved. Source mode keeps a viewport-sized, internally
-scrollable editor. Format BAC instead uses the rendered program's intrinsic height, so the paper
-projection grows with every line and moves the lower dock down rather than clipping the algorithm.
-The source editor uses the Code surface; Format BAC deliberately returns to a light paper surface
-to preserve the exam metaphor.
+The source remains the largest surface. Input and variables remain adjacent on wide screens;
+output and execution trace stay visible in the lower dock. Switching between Source and Format
+BAC does not unmount the editor, so selection and undo history are preserved. Source mode uses an
+internally scrollable editor. Format BAC uses the rendered program's intrinsic height, allowing a
+long algorithm to move the lower dock rather than being clipped.
+
+On mobile, the program rail becomes a full-width disclosure, the debugger toolbar stays sticky,
+and the panels form one vertical reading order: editor, input, variables, output, trace. Controls
+remain horizontally scrollable at the narrowest supported widths.
 
 ## Documentation hierarchy
 
-The manual uses four navigation groups: Incepe, Limbaj, Instrumente, and Contract. On desktop the
-TOC and article are separate light surfaces on the canvas. The article keeps a narrow reading
-measure, unnumbered sections, labelled dark code specimens, and rule-based tables. On small
-screens the TOC becomes a sticky disclosure instead of forcing every link above the content. Print
-styles remove application chrome, shadows, and surface framing.
+```text
+application header
+  section tree | 720 px article | reading gutter
+```
+
+The manual keeps Romanian content and unnumbered section titles. Its left tree groups concepts by
+Introducere, Limbaj, Instrumente, and Extra, and provides intra-page navigation. Below 800 pixels
+the tree becomes a full-width drawer. Print styles remove all application chrome and restore light
+paper colors.
 
 ## Accessibility constraints
 
-- Interactive controls keep visible text on narrow screens and grow to 44 pixels in the mobile
-  toolbar.
-- Focus uses a gold perimeter plus an Ink companion edge; neither light nor dark surfaces may
-  suppress one half of the indicator.
+- Navigation exposes `aria-current` for both the active application page and active document
+  section.
+- Documentation navigation transfers focus to the selected heading after scrolling.
+- Interactive controls grow to at least 44 pixels in the mobile debugger toolbar.
+- Focus indicators remain visible on every dark surface.
 - The debugger live region, waiting-input focus transfer, and post-input focus restoration are
   presentation-independent invariants.
-- BAC drop targets remain at least 28 pixels high while their visible rule stays thin.
-- Runtime state never relies on hue alone: labels, dots, table markers, and banners remain present.
-- Forced-colors, print, and reduced-motion modes receive explicit fallbacks.
+- BAC drop targets remain at least 28 pixels high while the visible rule stays thin.
+- Forced-colors, print, and reduced-motion modes have explicit fallbacks.

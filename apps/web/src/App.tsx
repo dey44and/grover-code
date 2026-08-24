@@ -38,6 +38,9 @@ type Page = 'workspace' | 'docs';
 type EditorMode = 'source' | 'exam';
 type ControlIconName = 'back' | 'pause' | 'play' | 'reset' | 'step';
 
+const initialPageFromLocation = (): Page =>
+  new URLSearchParams(window.location.search).get('view') === 'docs' ? 'docs' : 'workspace';
+
 interface DebugSession {
   readonly interpreter: Interpreter;
   readonly state: MachineState;
@@ -159,11 +162,7 @@ function Brand() {
   return (
     <div className="brand">
       <span className="brand__mark" aria-hidden="true" />
-      <span className="brand__copy">
-        <span className="brand__name">Grover</span>
-        {/* <span className="brand__descriptor">interpretor pentru pseudocod</span> */}
-      </span>
-      {/* <span className="brand__version">v1</span> */}
+      <span className="brand__name">Grover</span>
     </div>
   );
 }
@@ -392,8 +391,9 @@ function Controls({
 }
 
 export function App() {
-  const [page, setPage] = useState<Page>('workspace');
+  const [page, setPage] = useState<Page>(initialPageFromLocation);
   const [editorMode, setEditorMode] = useState<EditorMode>('source');
+  const [workspaceNavigationOpen, setWorkspaceNavigationOpen] = useState(false);
   const [selectedExample, setSelectedExample] = useState(initialExample.id);
   const [source, setSource] = useState(initialExample.source);
   const [input, setInput] = useState(initialExample.input);
@@ -404,6 +404,7 @@ export function App() {
   const [announcement, setAnnouncement] = useState('');
   const stepButtonRef = useRef<HTMLButtonElement>(null);
   const additionalInputRef = useRef<HTMLInputElement>(null);
+  const workspaceNavigationToggleRef = useRef<HTMLButtonElement>(null);
 
   const parseResult = useMemo(() => parse(source), [source]);
   const inputResult = useMemo(() => parseInputTape(input), [input]);
@@ -460,6 +461,28 @@ export function App() {
     return () => window.cancelAnimationFrame(frame);
   }, [machineState?.status, machineState?.waitingForInput?.available]);
 
+  useEffect(() => {
+    if (!workspaceNavigationOpen) return;
+    const closeOnEscape = (event: globalThis.KeyboardEvent): void => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      setWorkspaceNavigationOpen(false);
+      window.requestAnimationFrame(() => workspaceNavigationToggleRef.current?.focus());
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [workspaceNavigationOpen]);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return;
+    const mobileLayout = window.matchMedia('(max-width: 799px)');
+    const closeWhenLeavingMobile = (event: MediaQueryListEvent): void => {
+      if (!event.matches) setWorkspaceNavigationOpen(false);
+    };
+    mobileLayout.addEventListener('change', closeWhenLeavingMobile);
+    return () => mobileLayout.removeEventListener('change', closeWhenLeavingMobile);
+  }, []);
+
   const traceRecord = machineState?.trace.at(-1);
   const resourceLimitSpan =
     machineState?.limit?.kind === 'resource' ? machineState.limit.span : undefined;
@@ -499,6 +522,7 @@ export function App() {
     setAppendedInputCount(0);
     setSession(undefined);
     setAnnouncement('');
+    setWorkspaceNavigationOpen(false);
   };
 
   const editSource = (next: string): void => {
@@ -538,7 +562,13 @@ export function App() {
         onNavigate={(next) => {
           setIsPlaying(false);
           setAnnouncement('');
+          setWorkspaceNavigationOpen(false);
           setPage(next);
+          const location = new URL(window.location.href);
+          if (next === 'docs') location.searchParams.set('view', 'docs');
+          else location.searchParams.delete('view');
+          location.hash = '';
+          window.history.replaceState(null, '', location);
           if (next === 'workspace') {
             window.requestAnimationFrame(() =>
               document.querySelector<HTMLElement>('#editor-title')?.focus(),
@@ -552,284 +582,316 @@ export function App() {
         </Suspense>
       ) : (
         <main className="workspace">
-          <header className="workspace-intro">
-            <div className="workspace-intro__copy">
-              {/* <h1 id="workspace-title" lang="en" tabIndex={-1}>
-                Working space
-              </h1> */}
-            </div>
-            <label className="program-picker">
+          <h1 className="visually-hidden" lang="en">
+            Working space
+          </h1>
+          <aside className="workspace-sidebar" aria-label="Programe sablon">
+            <button
+              ref={workspaceNavigationToggleRef}
+              type="button"
+              className="workspace-sidebar__toggle"
+              aria-controls="workspace-programs"
+              aria-expanded={workspaceNavigationOpen}
+              onClick={() => setWorkspaceNavigationOpen((open) => !open)}
+            >
               <span>Programe sablon</span>
-              <select
-                className="program-select"
-                value={selectedExample}
-                onChange={(event) => loadExample(event.target.value)}
-              >
-                <option value="custom" disabled>
-                  Program personalizat
-                </option>
-                {examples.map((example) => (
-                  <option key={example.id} value={example.id}>
-                    {example.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </header>
-          <div className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">
-            {announcement}
-          </div>
-
-          <section className="studio-shell" aria-label="Spatiu de executie">
-            <div className="command-bar">
-              <Controls
-                canExecute={canExecute}
-                isPlaying={isPlaying}
-                state={machineState}
-                stepButtonRef={stepButtonRef}
-                onPause={() => {
-                  setIsPlaying(false);
-                  setAnnouncement('Executia a fost pusa pe pauza.');
-                }}
-                onReset={() => {
-                  if (interpreter !== undefined) {
-                    setPendingInput('');
-                    setAppendedInputCount(0);
-                    updateSession(interpreter.reset(input));
-                    setAnnouncement('Executia a fost resetata la starea initiala.');
-                  }
-                }}
-                onRun={() => {
-                  setAnnouncement('Executia a pornit.');
-                  setIsPlaying(true);
-                }}
-                onStep={() => {
-                  if (interpreter !== undefined) {
-                    const next = interpreter.step();
-                    updateSession(next);
-                    setAnnouncement(describeMachineState(next));
-                  }
-                }}
-                onStepBack={() => {
-                  if (interpreter !== undefined) {
-                    const next = interpreter.stepBack();
-                    updateSession(next);
-                    setAnnouncement(
-                      `Inapoi: starea anterioara a fost restaurata; ${next.stepsExecuted} pasi executati raman.`,
-                    );
-                  }
-                }}
-              />
-              <div className="mobile-variable-summary" role="group" aria-label="Rezumat variabile">
-                <span className="mobile-variable-summary__label">Variabile</span>
-                {variableSummary.length === 0 ? (
-                  <span className="mobile-variable-summary__empty">nicio valoare</span>
-                ) : (
-                  variableSummary.map(([name, value]) => (
-                    <code
-                      key={name}
-                      className={changedVariables.has(name) ? 'is-changed' : undefined}
-                    >
-                      {changedVariables.has(name) ? (
-                        <span className="mobile-variable-summary__change" aria-hidden="true">
-                          ●
-                        </span>
-                      ) : null}
-                      {name} = {formatRuntimeValue(value)}
-                      {changedVariables.has(name) ? (
-                        <span className="visually-hidden">, modificata</span>
-                      ) : null}
-                    </code>
-                  ))
-                )}
-                {Object.keys(shownState.variables).length <= 3 ? null : (
-                  <span className="mobile-variable-summary__more">
-                    +{Object.keys(shownState.variables).length - 3}
+              <span aria-hidden="true">{workspaceNavigationOpen ? '−' : '+'}</span>
+            </button>
+            <div
+              id="workspace-programs"
+              className={`workspace-sidebar__body${workspaceNavigationOpen ? ' workspace-sidebar__body--open' : ''}`}
+            >
+              <nav className="program-list" aria-label="Alege un program sablon">
+                <span className="program-list__group">Exemple</span>
+                {selectedExample === 'custom' ? (
+                  <span
+                    className="program-list__item program-list__item--static"
+                    aria-current="page"
+                    aria-label="Program personalizat activ"
+                  >
+                    <span>Program personalizat</span>
                   </span>
-                )}
-              </div>
+                ) : null}
+                {examples.map((example) => (
+                  <button
+                    key={example.id}
+                    type="button"
+                    className="program-list__item"
+                    aria-current={selectedExample === example.id ? 'page' : undefined}
+                    aria-label={`Incarca ${example.name}`}
+                    title={example.description}
+                    onClick={() => loadExample(example.id)}
+                  >
+                    <span>{example.name}</span>
+                  </button>
+                ))}
+              </nav>
+            </div>
+          </aside>
+          <div className="workspace-main" inert={workspaceNavigationOpen ? true : undefined}>
+            <div className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">
+              {announcement}
             </div>
 
-            {firstDiagnostic === undefined && inputResult.diagnostics.length === 0 ? null : (
-              <div className="diagnostic-banner" role="alert">
-                <strong>Executie blocata.</strong>
-                <span>
-                  {firstDiagnostic === undefined
-                    ? inputResult.diagnostics[0]?.message
-                    : `Linia ${firstDiagnostic.span.start.line}, coloana ${firstDiagnostic.span.start.column}: ${firstDiagnostic.message}`}
-                </span>
-              </div>
-            )}
-            {machineState?.error === undefined &&
-            machineState?.limit === undefined &&
-            machineState?.waitingForInput === undefined ? null : (
-              <div
-                className={`runtime-banner runtime-banner--${machineState.error === undefined ? 'warning' : 'error'}`}
-              >
-                {machineState.error?.message ??
-                  machineState.limit?.message ??
-                  `Mai sunt necesare ${machineState.waitingForInput?.required ?? 0} valori; disponibile: ${machineState.waitingForInput?.available ?? 0}.`}
-              </div>
-            )}
-
-            <div className="workbench" data-editor-mode={editorMode}>
-              <section className="panel editor-panel" aria-labelledby="editor-title">
-                <div className="panel-header">
-                  <div>
-                    <h2 id="editor-title" tabIndex={-1}>
-                      Program
-                    </h2>
-                    <span className="panel-header__meta">
-                      {source.split('\n').length} linii ·{' '}
-                      {parseResult.ok ? 'AST valid' : 'AST invalid'}
-                    </span>
-                  </div>
-                  <div className="view-switch" role="group" aria-label="Reprezentarea programului">
-                    <button
-                      type="button"
-                      aria-pressed={editorMode === 'source'}
-                      onClick={() => setEditorMode('source')}
-                    >
-                      Sursa
-                    </button>
-                    <button
-                      type="button"
-                      aria-pressed={editorMode === 'exam'}
-                      onClick={() => setEditorMode('exam')}
-                    >
-                      Format BAC
-                    </button>
-                  </div>
-                </div>
-                <div className="editor-panel__body">
-                  <div className="editor-mode-pane" hidden={editorMode !== 'source'}>
-                    <Suspense
-                      fallback={<div className="editor-loading">Se incarca editorul...</div>}
-                    >
-                      <CodeEditor
-                        diagnostics={editorDiagnostics}
-                        onChange={editSource}
-                        value={source}
-                        {...(activeSpan === undefined ? {} : { activeSpan })}
-                      />
-                    </Suspense>
-                  </div>
-                  <div className="editor-mode-pane" hidden={editorMode !== 'exam'}>
-                    <ExamPreview
-                      program={parseResult.program}
-                      source={source}
-                      tokens={parseResult.tokens}
-                      onMoveCloser={(closeLine, targetBoundary) =>
-                        editSource(moveCloserLine(source, closeLine, targetBoundary))
-                      }
-                      {...(activeSpan === undefined ? {} : { activeSpan })}
-                    />
-                  </div>
-                </div>
-              </section>
-
-              <div className="inspector">
-                <section className="panel input-panel" aria-labelledby="input-title">
-                  <div className="panel-header">
-                    <h2 id="input-title" lang="en">
-                      Input
-                    </h2>
-                    <span className="panel-header__meta">
-                      {shownState.input.position}/{shownState.input.length} citite
-                    </span>
-                  </div>
-                  <textarea
-                    className="input-editor"
-                    aria-label="Valori de intrare"
-                    aria-describedby="input-lock-hint"
-                    spellCheck={false}
-                    readOnly={inputLocked}
-                    value={input}
-                    onChange={(event) => {
-                      setIsPlaying(false);
-                      setInput(event.target.value);
+            <section className="studio-shell" aria-label="Spatiu de executie">
+              <div className="command-bar">
+                <Controls
+                  canExecute={canExecute}
+                  isPlaying={isPlaying}
+                  state={machineState}
+                  stepButtonRef={stepButtonRef}
+                  onPause={() => {
+                    setIsPlaying(false);
+                    setAnnouncement('Executia a fost pusa pe pauza.');
+                  }}
+                  onReset={() => {
+                    if (interpreter !== undefined) {
                       setPendingInput('');
                       setAppendedInputCount(0);
-                      setSession(undefined);
-                      setAnnouncement('');
-                    }}
-                  />
-                  <div className="input-footer">
-                    <span id="input-lock-hint">
-                      {inputLocked
-                        ? 'Apasa Reset pentru a modifica valorile'
-                        : 'Separa valorile cu Enter, spatiu sau virgula'}
+                      updateSession(interpreter.reset(input));
+                      setAnnouncement('Executia a fost resetata la starea initiala.');
+                    }
+                  }}
+                  onRun={() => {
+                    setAnnouncement('Executia a pornit.');
+                    setIsPlaying(true);
+                  }}
+                  onStep={() => {
+                    if (interpreter !== undefined) {
+                      const next = interpreter.step();
+                      updateSession(next);
+                      setAnnouncement(describeMachineState(next));
+                    }
+                  }}
+                  onStepBack={() => {
+                    if (interpreter !== undefined) {
+                      const next = interpreter.stepBack();
+                      updateSession(next);
+                      setAnnouncement(
+                        `Inapoi: starea anterioara a fost restaurata; ${next.stepsExecuted} pasi executati raman.`,
+                      );
+                    }
+                  }}
+                />
+                <div
+                  className="mobile-variable-summary"
+                  role="group"
+                  aria-label="Rezumat variabile"
+                >
+                  <span className="mobile-variable-summary__label">Variabile</span>
+                  {variableSummary.length === 0 ? (
+                    <span className="mobile-variable-summary__empty">nicio valoare</span>
+                  ) : (
+                    variableSummary.map(([name, value]) => (
+                      <code
+                        key={name}
+                        className={changedVariables.has(name) ? 'is-changed' : undefined}
+                      >
+                        {changedVariables.has(name) ? (
+                          <span className="mobile-variable-summary__change" aria-hidden="true">
+                            ●
+                          </span>
+                        ) : null}
+                        {name} = {formatRuntimeValue(value)}
+                        {changedVariables.has(name) ? (
+                          <span className="visually-hidden">, modificata</span>
+                        ) : null}
+                      </code>
+                    ))
+                  )}
+                  {Object.keys(shownState.variables).length <= 3 ? null : (
+                    <span className="mobile-variable-summary__more">
+                      +{Object.keys(shownState.variables).length - 3}
                     </span>
-                  </div>
-                  {machineState?.status !== 'waiting-input' ? null : (
-                    <div className="input-append">
-                      <label htmlFor="additional-input">Valori suplimentare</label>
-                      <div className="input-append__controls">
-                        <input
-                          ref={additionalInputRef}
-                          id="additional-input"
-                          aria-describedby="additional-input-help"
-                          value={pendingInput}
-                          onChange={(event) => setPendingInput(event.target.value)}
-                        />
-                        <button
-                          type="button"
-                          className="quiet-button"
-                          disabled={
-                            pendingInputResult.values.length === 0 ||
-                            pendingInputResult.diagnostics.length > 0
-                          }
-                          onClick={() => {
-                            if (interpreter === undefined) return;
-                            const next = interpreter.appendInput(pendingInput);
-                            updateSession(next);
-                            setAppendedInputCount(
-                              (count) => count + pendingInputResult.values.length,
-                            );
-                            setPendingInput('');
-                            setAnnouncement(
-                              next.status === 'ready'
-                                ? 'Input completat. Executia poate continua.'
-                                : describeMachineState(next),
-                            );
-                            if (next.status === 'ready') {
-                              window.requestAnimationFrame(() => stepButtonRef.current?.focus());
-                            }
-                          }}
-                        >
-                          Adauga
-                        </button>
-                      </div>
-                      <span id="additional-input-help">
-                        {pendingInputResult.diagnostics[0]?.message ??
-                          `Necesare: ${machineState.waitingForInput?.required ?? 0}; disponibile: ${machineState.waitingForInput?.available ?? 0}.`}
+                  )}
+                </div>
+              </div>
+
+              {firstDiagnostic === undefined && inputResult.diagnostics.length === 0 ? null : (
+                <div className="diagnostic-banner" role="alert">
+                  <strong>Executie blocata.</strong>
+                  <span>
+                    {firstDiagnostic === undefined
+                      ? inputResult.diagnostics[0]?.message
+                      : `Linia ${firstDiagnostic.span.start.line}, coloana ${firstDiagnostic.span.start.column}: ${firstDiagnostic.message}`}
+                  </span>
+                </div>
+              )}
+              {machineState?.error === undefined &&
+              machineState?.limit === undefined &&
+              machineState?.waitingForInput === undefined ? null : (
+                <div
+                  className={`runtime-banner runtime-banner--${machineState.error === undefined ? 'warning' : 'error'}`}
+                >
+                  {machineState.error?.message ??
+                    machineState.limit?.message ??
+                    `Mai sunt necesare ${machineState.waitingForInput?.required ?? 0} valori; disponibile: ${machineState.waitingForInput?.available ?? 0}.`}
+                </div>
+              )}
+
+              <div className="workbench" data-editor-mode={editorMode}>
+                <section className="panel editor-panel" aria-labelledby="editor-title">
+                  <div className="panel-header">
+                    <div>
+                      <h2 id="editor-title" tabIndex={-1}>
+                        Program
+                      </h2>
+                      <span className="panel-header__meta">
+                        {source.split('\n').length} linii ·{' '}
+                        {parseResult.ok ? 'AST valid' : 'AST invalid'}
                       </span>
                     </div>
-                  )}
+                    <div
+                      className="view-switch"
+                      role="group"
+                      aria-label="Reprezentarea programului"
+                    >
+                      <button
+                        type="button"
+                        aria-pressed={editorMode === 'source'}
+                        onClick={() => setEditorMode('source')}
+                      >
+                        Sursa
+                      </button>
+                      <button
+                        type="button"
+                        aria-pressed={editorMode === 'exam'}
+                        onClick={() => setEditorMode('exam')}
+                      >
+                        Format BAC
+                      </button>
+                    </div>
+                  </div>
+                  <div className="editor-panel__body">
+                    <div className="editor-mode-pane" hidden={editorMode !== 'source'}>
+                      <Suspense
+                        fallback={<div className="editor-loading">Se incarca editorul...</div>}
+                      >
+                        <CodeEditor
+                          diagnostics={editorDiagnostics}
+                          onChange={editSource}
+                          value={source}
+                          {...(activeSpan === undefined ? {} : { activeSpan })}
+                        />
+                      </Suspense>
+                    </div>
+                    <div className="editor-mode-pane" hidden={editorMode !== 'exam'}>
+                      <ExamPreview
+                        program={parseResult.program}
+                        source={source}
+                        tokens={parseResult.tokens}
+                        onMoveCloser={(closeLine, targetBoundary) =>
+                          editSource(moveCloserLine(source, closeLine, targetBoundary))
+                        }
+                        {...(activeSpan === undefined ? {} : { activeSpan })}
+                      />
+                    </div>
+                  </div>
                 </section>
-                <Variables state={shownState} />
-              </div>
-            </div>
 
-            <div className="bottom-grid">
-              <section className="panel output-panel" aria-labelledby="output-title">
-                <div className="panel-header">
-                  <h2 id="output-title" lang="en">
-                    Output
-                  </h2>
-                  <span className="panel-header__meta">{shownState.output.length} afisari</span>
+                <div className="inspector">
+                  <section className="panel input-panel" aria-labelledby="input-title">
+                    <div className="panel-header">
+                      <h2 id="input-title" lang="en">
+                        Input
+                      </h2>
+                      <span className="panel-header__meta">
+                        {shownState.input.position}/{shownState.input.length} citite
+                      </span>
+                    </div>
+                    <textarea
+                      className="input-editor"
+                      aria-label="Valori de intrare"
+                      aria-describedby="input-lock-hint"
+                      spellCheck={false}
+                      readOnly={inputLocked}
+                      value={input}
+                      onChange={(event) => {
+                        setIsPlaying(false);
+                        setInput(event.target.value);
+                        setPendingInput('');
+                        setAppendedInputCount(0);
+                        setSession(undefined);
+                        setAnnouncement('');
+                      }}
+                    />
+                    <div className="input-footer">
+                      <span id="input-lock-hint">
+                        {inputLocked
+                          ? 'Apasa Reset pentru a modifica valorile'
+                          : 'Separa valorile cu Enter, spatiu sau virgula'}
+                      </span>
+                    </div>
+                    {machineState?.status !== 'waiting-input' ? null : (
+                      <div className="input-append">
+                        <label htmlFor="additional-input">Valori suplimentare</label>
+                        <div className="input-append__controls">
+                          <input
+                            ref={additionalInputRef}
+                            id="additional-input"
+                            aria-describedby="additional-input-help"
+                            value={pendingInput}
+                            onChange={(event) => setPendingInput(event.target.value)}
+                          />
+                          <button
+                            type="button"
+                            className="quiet-button"
+                            disabled={
+                              pendingInputResult.values.length === 0 ||
+                              pendingInputResult.diagnostics.length > 0
+                            }
+                            onClick={() => {
+                              if (interpreter === undefined) return;
+                              const next = interpreter.appendInput(pendingInput);
+                              updateSession(next);
+                              setAppendedInputCount(
+                                (count) => count + pendingInputResult.values.length,
+                              );
+                              setPendingInput('');
+                              setAnnouncement(
+                                next.status === 'ready'
+                                  ? 'Input completat. Executia poate continua.'
+                                  : describeMachineState(next),
+                              );
+                              if (next.status === 'ready') {
+                                window.requestAnimationFrame(() => stepButtonRef.current?.focus());
+                              }
+                            }}
+                          >
+                            Adauga
+                          </button>
+                        </div>
+                        <span id="additional-input-help">
+                          {pendingInputResult.diagnostics[0]?.message ??
+                            `Necesare: ${machineState.waitingForInput?.required ?? 0}; disponibile: ${machineState.waitingForInput?.available ?? 0}.`}
+                        </span>
+                      </div>
+                    )}
+                  </section>
+                  <Variables state={shownState} />
                 </div>
-                <pre className="output-stream">
-                  {shownState.renderedOutput.length === 0 ? (
-                    <span className="output-placeholder">Niciun output.</span>
-                  ) : (
-                    shownState.renderedOutput
-                  )}
-                </pre>
-              </section>
-              <Trace trace={shownState.trace} />
-            </div>
-          </section>
+              </div>
+
+              <div className="bottom-grid">
+                <section className="panel output-panel" aria-labelledby="output-title">
+                  <div className="panel-header">
+                    <h2 id="output-title" lang="en">
+                      Output
+                    </h2>
+                    <span className="panel-header__meta">{shownState.output.length} afisari</span>
+                  </div>
+                  <pre className="output-stream">
+                    {shownState.renderedOutput.length === 0 ? (
+                      <span className="output-placeholder">Niciun output.</span>
+                    ) : (
+                      shownState.renderedOutput
+                    )}
+                  </pre>
+                </section>
+                <Trace trace={shownState.trace} />
+              </div>
+            </section>
+          </div>
         </main>
       )}
     </div>

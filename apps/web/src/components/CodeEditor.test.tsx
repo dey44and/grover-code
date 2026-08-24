@@ -16,7 +16,12 @@ describe('CodeEditor syntax projection', () => {
     await waitFor(() => {
       expect(container.querySelector('.cm-bac-comment')).toHaveTextContent('// daca');
     });
-    expect(container.querySelector('.cm-bac-string')).toHaveTextContent('"https://exemplu"');
+    expect(container.querySelector('.cm-bac-string')).toHaveTextContent('https://exemplu');
+    expect(
+      [...container.querySelectorAll('.cm-bac-string-delimiter')].map(
+        (element) => element.textContent,
+      ),
+    ).toEqual(['"', '"']);
     expect(
       [...container.querySelectorAll('.cm-bac-keyword')].map((element) => element.textContent),
     ).toEqual(expect.arrayContaining(['scrie', 'Dacă', 'nu', 'fals', 'atunci']));

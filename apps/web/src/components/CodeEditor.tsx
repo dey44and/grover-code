@@ -85,6 +85,7 @@ const findCommentStart = (line: string): number => {
 const keywordDecoration = Decoration.mark({ class: 'cm-bac-keyword' });
 const numberDecoration = Decoration.mark({ class: 'cm-bac-number' });
 const stringDecoration = Decoration.mark({ class: 'cm-bac-string' });
+const stringDelimiterDecoration = Decoration.mark({ class: 'cm-bac-string-delimiter' });
 const commentDecoration = Decoration.mark({ class: 'cm-bac-comment' });
 const operatorDecoration = Decoration.mark({ class: 'cm-bac-operator' });
 const activeDecoration = Decoration.mark({ class: 'cm-bac-executing' });
@@ -126,7 +127,11 @@ const syntaxDecorations = ViewPlugin.fromClass(
             const start = match.index;
             const end = start + match[0].length;
             protectedRanges.push({ start, end });
-            ranges.push(stringDecoration.range(line.from + start, line.from + end));
+            ranges.push(stringDelimiterDecoration.range(line.from + start, line.from + start + 1));
+            if (end - start > 2) {
+              ranges.push(stringDecoration.range(line.from + start + 1, line.from + end - 1));
+            }
+            ranges.push(stringDelimiterDecoration.range(line.from + end - 1, line.from + end));
           }
 
           if (commentStart >= 0) {
@@ -197,39 +202,40 @@ const editorTheme = EditorView.theme({
   '&': {
     backgroundColor: 'var(--surface-code)',
     color: 'var(--code-ink)',
-    fontSize: '14.5px',
+    fontSize: '14px',
     height: '100%',
   },
   '&.cm-focused': {
-    boxShadow: 'inset 0 0 0 4px var(--ink)',
-    outline: '2px solid var(--focus)',
-    outlineOffset: '-2px',
+    boxShadow: 'inset 0 0 0 2px var(--focus)',
+    outline: 'none',
   },
   '.cm-content': {
     caretColor: 'var(--lilac)',
     fontFamily: 'var(--font-mono)',
     fontVariantLigatures: 'none',
-    lineHeight: '1.7',
-    padding: '20px 0 52px',
+    lineHeight: '1.75',
+    padding: '12px 0 48px',
   },
-  '.cm-line': { padding: '0 20px' },
+  '.cm-line': { padding: '0 16px' },
   '.cm-gutters': {
     backgroundColor: 'var(--surface-code-gutter)',
     borderRight: '1px solid var(--surface-code-border)',
     color: 'var(--code-muted)',
     fontFamily: 'var(--font-mono)',
     fontVariantLigatures: 'none',
+    paddingTop: '12px',
   },
   '.cm-activeLine, .cm-activeLineGutter': { backgroundColor: 'var(--active-line)' },
   '.cm-selectionBackground, &.cm-focused .cm-selectionBackground': {
     backgroundColor: 'var(--selection)',
   },
   '.cm-cursor': { borderLeftColor: 'var(--lilac)' },
-  '.cm-bac-keyword': { color: 'var(--syntax-keyword)', fontWeight: '650' },
+  '.cm-bac-keyword': { color: 'var(--syntax-keyword)' },
   '.cm-bac-number': { color: 'var(--syntax-number)' },
   '.cm-bac-string': { color: 'var(--syntax-string)' },
-  '.cm-bac-comment': { color: 'var(--syntax-comment)', fontStyle: 'italic' },
-  '.cm-bac-operator': { color: 'var(--syntax-operator)', fontWeight: '600' },
+  '.cm-bac-string-delimiter': { color: '#d9f5dd' },
+  '.cm-bac-comment': { color: 'var(--syntax-comment)' },
+  '.cm-bac-operator': { color: 'var(--syntax-operator)' },
   '.cm-bac-executing': {
     backgroundColor: 'var(--executing)',
     borderBottom: '2px solid var(--accent)',
